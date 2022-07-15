@@ -1,205 +1,346 @@
-class Point {
-    constructor(x, y, isWall=false) {
-        this.x = x
-        this.y = y
-        this.dist = Infinity
-        this.visited = false
-        this.prev = null
-        this.diagonal = false
-        this.isWall = isWall
-    }
-    equals(p) {
-        if(this.x == p.x && this.y == p.y) return true
-        return false
-    }
-    neighbors(nodes, diagonally=true) {
-        let result = []
-        for(let i = this.x-50 ; i <= this.x+50; i+=50) {
-            for(let j = this.y-50 ; j <= this.y+50; j+=50) {
-                    if(diagonally) var find = nodes.find(p => {if(p.x == i && p.y == j && p.visited == false) return p})
-                    if(!diagonally) var find = nodes.find(p => {if(p.x == i && p.y == j && p.visited == false && (p.x == this.x || p.y == this.y)) return p})
-                    if(find !== undefined && !find.isWall) {
-                        find.visited = true
-                        if(find.x == this.x || find.y == this.y) find.diagonal = false
-                        result.push(find)
-                    }
-            }
-        }
-        return result
-    }
+class Node {
+	constructor(x, y, isWall = false) {
+		this.x = x
+		this.y = y
+		this.isWall = isWall
+		this.visited = false
+		this.ignore = false
+		this.dist = Infinity
+		this.prev = null
+	}
+	equals(p) {
+		return (this.x == p.x && this.y == p.y)
+	}
 }
 
-class Canva {
-    constructor(canva, width, height) {
-        this.canva = canva
-        this.ctx = this.canva.getContext("2d")
-        this.width = width
-        this.height = height
-        this.walls = []
-        this.nodes = []
-    }
+class Field {
+	constructor(width, height, canvaELement, nodeSize=50) {
+		this.width = width
+		this.height = height
+		this.ctx = canvaELement.getContext("2d")
+		this.nodeSize = nodeSize
+		this.gridXSize = Math.floor(width/nodeSize)
+		this.gridYSize = Math.floor(height/nodeSize)
+		this.drawGrid()
+		this.grid = []
+		for (var x = 0; x < this.gridXSize; x++) {
+			this.grid.push([])
+			for (var y = 0; y < this.gridYSize; y++) {
+				this.grid[x].push(new Node(x, y, false))
+			}
+		}
+	}
+	drawGrid() {
+		for (var x = 0; x < this.gridXSize; x++) {
+			for (var y = 0; y < this.gridYSize; y++) {
+				var xCoord = x*this.nodeSize
+				var yCoord = y*this.nodeSize
+				this.ctx.fillStyle = "white"
+				this.ctx.strokeStyle = "black"
+				this.ctx.fillRect(xCoord,yCoord,this.nodeSize,this.nodeSize)
+				this.ctx.strokeRect(xCoord,yCoord,this.nodeSize,this.nodeSize)
+			}
+		}
+	}
+	drawPoint(point, color, stroke=false) {
+		var x = point.x*this.nodeSize
+		var y = point.y*this.nodeSize
+		if(!stroke) {
+			this.ctx.fillStyle = color
+			this.ctx.fillRect(x,y,this.nodeSize,this.nodeSize);
 
-    findPoint(point) {
-        return this.nodes.find(el => { if(el.x == point.x && el.y == point.y) return el})
-    }
+		} else {
+			this.ctx.fillStyle = color
+			this.ctx.strokeStyle = "black"
+			this.ctx.fillRect(x,y,this.nodeSize,this.nodeSize);
+			this.ctx.strokeRect(x,y,this.nodeSize,this.nodeSize);
+		}
+		
+	}
+	dijkstraNeighbors(node) {
+		let result = []
+		for(let i = node.x-1 ; i <= node.x+1; i++) {
+			for(let j = node.y-1 ; j <= node.y+1; j++) {
+					if(i >= 0 && i < this.gridXSize && j >= 0 && j < this.gridYSize && (i == node.x || j == node.y)) {
+						if(this.grid[i][j] !== undefined && !this.grid[i][j].isWall && !this.grid[i][j].visited) result.push(this.grid[i][j])
+					}
+			}
+		}
+		return result
+	}
+	allNeighbors(node, diagonally=true) {
+		let result = []
+		for(let i = node.x-1 ; i <= node.x+1; i++) {
+			for(let j = node.y-1 ; j <= node.y+1; j++) {
+					if(i >= 0 && i < this.gridXSize && j >= 0 && j < this.gridYSize) {
+						if(diagonally && !(i == node.x && j == node.y)) result.push(this.grid[i][j])
+						if(!diagonally && (i == node.x || j == node.y) && !(i == node.x && j == node.y)) result.push(this.grid[i][j]) 
+					}
+			}
+		}
+		return result
+	}
+	clearGrid() {
+		this.grid = []
+		for (var x = 0; x < this.gridXSize; x++) {
+			this.grid.push([])
+			for (var y = 0; y < this.gridYSize; y++) {
+				this.grid[x].push(new Node(x, y, false))
+			}
+		}
+	}
+	generateMaze() {
+		var startingSide = ["N", "E", "S", "W"][Math.floor(Math.random()*["N", "E", "S", "W"].length)]
+		this.startingNode = new Node(0,0,false)
+		if(startingSide == "N") {
+			this.startingNode.x = Math.floor(Math.random()*this.gridXSize)
+		} else if(startingSide == "E") {
+			this.startingNode.x = this.gridXSize - 1
+			this.startingNode.y = Math.floor(Math.random()*this.gridYSize)
+		} else if(startingSide == "S") {
+			this.startingNode.x = Math.floor(Math.random()*this.gridXSize)
+			this.startingNode.y = this.gridYSize - 1
+		} else {
+			this.startingNode.y = Math.floor(Math.random()*this.gridYSize)
+		}
+		this.grid = []
+		for (var x = 0; x < this.gridXSize; x++) {
+			this.grid.push([])
+			for (var y = 0; y < this.gridYSize; y++) {
+				this.grid[x].push(new Node(x, y, true))
+				this.drawPoint(new Node(x, y), "red", false)
+			}
+		}
 
-    drawPoint(point, color, stroke, r=50) {
-        if(!stroke) {
-            this.ctx.fillStyle = color
-            this.ctx.fillRect(point.x,point.y,r,r);
+		this.drawPoint(this.startingNode, "blue", false)
 
-        } else {
-            this.ctx.fillStyle = color
-            this.ctx.strokeStyle = "black"
-            this.ctx.fillRect(point.x,point.y,r,r);
-            this.ctx.strokeRect(point.x,point.y,r,r);
-        }
-        
-    }
-    drawBoard(){
-        for (var x = 0; x <= this.width; x += 50) {
-            for (var y = 0; y <= this.height; y += 50) {
-                this.ctx.fillStyle = "white"
-                this.ctx.strokeStyle = "black"
-                this.ctx.fillRect(x,y,50,50)
-                this.ctx.strokeRect(x,y,50,50)
-            }
-        }
-    }
-    generateMaze() {
-        var possibleStartSide = ["N", "E", "S", "W"]
-        var startingSide = possibleStartSide[Math.floor(Math.random()*possibleStartSide.length)]
-        this.startingPoint = new Point(0,0,false)
-        
-        if(startingSide == "N") {
-            this.startingPoint.x = Math.floor(Math.random()*this.width/50)*50
-        } else if(startingSide == "E") {
-            this.startingPoint.x = this.width - 50
-            this.startingPoint.y = Math.floor(Math.random()*this.height/50)*50
-        } else if(startingSide == "S") {
-            this.startingPoint.x = Math.floor(Math.random()*this.width/50)*50
-            this.startingPoint.y = this.height - 50
-        } else {
-            this.startingPoint.y = Math.floor(Math.random()*this.height/50)*50
-        }
-        this.drawPoint(this.startingPoint, "blue", false)
+		this.grid[this.startingNode.x][this.startingNode.y].isWall = false
+		this.grid[this.startingNode.x][this.startingNode.y].visited = true
+		this.grid[this.startingNode.x][this.startingNode.y].dist = 0
 
-        this.nodes = []
-        for (var x = 0; x <= this.width; x += 50) {
-            for (var y = 0; y <= this.height; y += 50) {
-                this.nodes.push(new Point(x, y, true))
-            }
-        }
-        
-        this.findPoint(this.startingPoint).isWall = false
-    
-        var currentNode = this.startingPoint
-        var numberOfUnvisitedNodes = this.nodes.filter(x => x.visited==false).length
-        while(numberOfUnvisitedNodes > 0) {
-            var neighbors = currentNode.neighbors(this.nodes, false)
-            var selectedNeighbor = neighbors[Math.floor(Math.random()*neighbors.length)]
-            var wallNeighbor = this.findPoint(selectedNeighbor)
-            wallNeighbor.isWall = false
-            wallNeighbor.visited = true
-            var trueNeighbor = new Point(selectedNeighbor.x == currentNode.x ? (selectedNeighbor.y < currentNode.y ? selectedNeighbor.y-50 : selectedNeighbor.y+50) : (selectedNeighbor.x < currentNode.x ? selectedNeighbor.x-50 : selectedNeighbor.x+50), 
-            selectedNeighbor.y == currentNode.y ? (selectedNeighbor.x < currentNode.x ? selectedNeighbor.x-50 : selectedNeighbor.x+50) : (selectedNeighbor.y < currentNode.y ? selectedNeighbor.y-50 : selectedNeighbor.y+50))   
-            this.findPoint(trueNeighbor)
-        }
-    }
-    start() {
-        
-        for(let i = 0; i < this.width; i+=50) {
-            for(let j = 0; j < this.height; j+=50) {
-                let point = new Point(i, j)
-                this.nodes.push(point)
-            }
-        }
+		var currentNode = this.startingNode
+		var nbOfUnvisitedNodes = this.gridXSize * this.gridYSize - 1
 
-        for(var w of this.walls) {
-            this.nodes.find(el => { if(el.x == w.x && el.y == w.y) return el}).isWall = 1
-        }
+		var field = this
 
-        this.nodes.find(el => { if(el.x == this.startingPoint.x && el.y == this.startingPoint.y) return el}).dist = 0
-    
-        var unvisitedNodes = Array.from(this.nodes)
-    
-        while(unvisitedNodes.length > 0) {
-            var closest = unvisitedNodes.reduce(function(prev, curr) {
-                return prev.dist < curr.dist ? prev : curr;
-            });
-            unvisitedNodes = unvisitedNodes.filter((el) => {if(el.x !== closest.x || el.y !== closest.y) return el})
-            var neighbors = closest.neighbors(unvisitedNodes)
-            for(let n of neighbors) {
-                let neighborDistance = n.diagonal ? Math.sqrt(2) : 1 
-                let alt = closest.dist + Math.abs(n.x - closest.x) + Math.abs(n.y - closest.y)
-                console.log(neighborDistance)
-                if(alt < n.dist && closest.dist !== Infinity) {
-                    n.dist = alt
-                    n.prev = closest
-                }
-                if(!n.equals(this.endingPoint)) {
-                    pointsQueue.push([n, "#FF0000", true])
-                } else {
-                    unvisitedNodes = []
-                    break
-                }
-            }
-        }
-    
-        var target = this.nodes.find(el => { if(el.x == this.endingPoint.x && el.y == this.endingPoint.y) return el})
-        if(target.prev !== null || target == this.startingPoint) {
-            while(target !== null) {
-                if(!(target.equals(this.startingPoint) || target.equals(this.endingPoint))) pointsQueue.push([target, "#00FF00", true])
-                target = target.prev
-            }
-        }
-        var drawPoints = setInterval(() => {
-            let current = pointsQueue.shift()
-            this.drawPoint(current[0], current[1], current[2])
-            if(pointsQueue.length == 0) clearInterval(drawPoints)
-        }, 1)
-    }
-    mouseEvent(e) {
-        var clickedPoint = new Point(Math.floor(e.clientX/this.nodeSize)*50, Math.floor(e.clientY/50)*50)
-        var operation = document.querySelector('input[name="control"]:checked').value 
-        if(operation == "start") {
-            if(this.startingPoint !== undefined) this.drawPoint(this.startingPoint, "white", true)
-            this.drawPoint(clickedPoint, "blue", true)
-            this.startingPoint = clickedPoint
-        } else if(operation == "end") {
-            if(this.endingPoint !== undefined) this.drawPoint(this.endingPoint, "white", true)
-            this.drawPoint(clickedPoint, "blue", true)
-            this.endingPoint = clickedPoint
-        } else if(operation == "wall") {
-            clickedPoint.isWall = true
-            this.walls.push(clickedPoint)
-            this.drawPoint(clickedPoint, "black", true)
-        }
-    }
+		const eventLoopQueue = () => {
+			return new Promise(resolve =>
+				setTimeout(() => {
+					nbOfUnvisitedNodes = field.grid.flat().filter(el => {if(el.visited==false) return el}).length
+					var neighbors = field.allNeighbors(currentNode, false)
+					var randomNeighbor = neighbors[Math.floor(Math.random()*neighbors.length)]
+					var trueNeighbor = new Node(0,0)
+					if(randomNeighbor.x == currentNode.x) {
+						if(randomNeighbor.y > currentNode.y) trueNeighbor.y = randomNeighbor.y + 1
+						if(randomNeighbor.y < currentNode.y) trueNeighbor.y = randomNeighbor.y - 1
+						trueNeighbor.x = randomNeighbor.x
+					} else {
+						if(randomNeighbor.x > currentNode.x) trueNeighbor.x = randomNeighbor.x + 1
+						if(randomNeighbor.x < currentNode.x) trueNeighbor.x = randomNeighbor.x - 1
+						trueNeighbor.y = randomNeighbor.y
+					}
+					if(trueNeighbor.x >= 0 && trueNeighbor.x < field.gridXSize && trueNeighbor.y >= 0 && trueNeighbor.y < field.gridYSize) {
+						if(!field.grid[trueNeighbor.x][trueNeighbor.y].visited) {
+							field.grid[trueNeighbor.x][trueNeighbor.y].isWall = false
+							field.grid[trueNeighbor.x][trueNeighbor.y].visited = true
+
+							currentNode = field.grid[trueNeighbor.x][trueNeighbor.y]
+							if(!field.grid[randomNeighbor.x][randomNeighbor.y].visited) {
+								field.grid[randomNeighbor.x][randomNeighbor.y].isWall = false
+								field.grid[randomNeighbor.x][randomNeighbor.y].visited = true
+								var neighborsOfRandom = field.allNeighbors(randomNeighbor, false)
+								for(var n of neighborsOfRandom) {
+									if(n.isWall) {
+										field.grid[n.x][n.y].visited = true
+									}
+								}
+							}
+						} else {
+							field.grid[randomNeighbor.x][randomNeighbor.y].visited = true
+							currentNode = field.grid[trueNeighbor.x][trueNeighbor.y]
+						}
+					} else {
+						field.grid[randomNeighbor.x][randomNeighbor.y].visited = true
+						var neighborsOfRandom = field.allNeighbors(randomNeighbor, false)
+						for(var n of neighborsOfRandom) {
+							if(n.isWall) {
+								field.grid[n.x][n.y].visited = true
+							}
+						}
+					}
+					resolve();
+				},0)
+			);
+		}
+
+		const run = async () => {
+			while (!stopMaze && nbOfUnvisitedNodes > 0) {
+				for(var n of field.grid.flat()) {
+					var neighbors = field.allNeighbors(n)
+					var allNeighborsVisited = true
+					for(var o of neighbors) {
+						if(o.visited == false) {
+							allNeighborsVisited = false
+						}
+					}
+					if(allNeighborsVisited) field.grid[n.x][n.y].visited = true
+					if(n.equals(this.startingNode)) {
+						field.drawPoint(n, "blue", true)
+					} else if(n.equals(currentNode)) {
+						field.endingNode = n
+						field.drawPoint(n, "blue", true)
+					} else if (n.visited == true && !n.isWall) {
+						field.drawPoint(n, "white", true)
+					} else if(n.visited && n.isWall) {
+						field.drawPoint(n, "black", true)
+					}
+				}
+				await eventLoopQueue();
+			}
+		}
+
+		run().then(() => {
+			document.getElementById("draw").innerText = "Start"
+			stopMaze = true
+		});
+	}
+	
+	dijkstra() {
+
+		for(var n of this.grid.flat()) {
+			this.grid[n.x][n.y].visited = false
+		}
+
+		this.grid[this.startingNode.x][this.startingNode.y].dist = 0
+
+		var unvisitedNodes = Array.from(this.grid)
+
+		var field = this
+
+		var running = true
+		// field.grid[field.startingNode.x][field.startingNode.y].visited = true
+		const eventLoopQueue = () => {
+			return new Promise(resolve =>
+				setTimeout(() => {
+					var closest = field.grid.flat().reduce(function(prev, curr) {
+						if(prev.ignore) return curr
+						if(curr.ignore) return prev
+						return (prev.dist < curr.dist) ? prev : curr;
+					});
+					field.grid[closest.x][closest.y].ignore = true
+					var neighbors = field.dijkstraNeighbors(closest)
+					for(let n of neighbors) {
+						if(n.x !== closest.x || n.y !== closest.y) {
+							let alt = closest.dist + Math.abs(n.x - closest.x) + Math.abs(n.y - closest.y)
+							if(alt < n.dist && closest.dist !== Infinity) {
+								field.grid[n.x][n.y].dist = alt
+								field.grid[n.x][n.y].prev = closest
+							}
+							if(!n.equals(field.endingNode)) {
+								field.drawPoint(n, "red", true)
+							} else {
+								running = false
+								resolve()
+							}
+						}
+						field.grid[n.x][n.y].visited = true
+					}
+					resolve();
+				},0)
+			);
+		}
+
+		const run = async () => {
+			while (!stopDijkstra && running && field.grid.flat().filter(el => {if(el.visited==false) return el}).length > 0) {
+				await eventLoopQueue();
+			}
+		}
+		run().then(() => {
+			setTimeout(() => {
+				if(dijkstraRunning) {
+					stopDijkstra = true
+					dijkstraRunning = false
+					document.getElementById("draw").innerText = "Clean"
+				}
+				var target = field.grid[field.endingNode.x][field.endingNode.y]
+				if(target.prev !== null || target.equals(field.startingNode)) {
+					while(target !== null) {
+						if(!(target.equals(field.startingNode) || target.equals(field.endingNode))) field.drawPoint(target, "green", true)
+						target = target.prev
+					}
+				}
+			}, 100)
+		});
+		
+	}
+
+	mouseEvent(e) {
+		var x = Math.floor((e.clientX - e.target.getBoundingClientRect().left)/this.nodeSize)
+		var y = Math.floor((e.clientY - e.target.getBoundingClientRect().top)/this.nodeSize)
+
+		var clickedNode = new Node(x, y)
+		var operation = document.querySelector('input[name="control"]:checked').value 
+		if(operation == "start") {
+			if(this.startingNode !== undefined) this.drawPoint(this.startingNode, "white", true)
+			this.drawPoint(clickedNode, "blue", true)
+			this.startingNode = clickedNode
+		} else if(operation == "end") {
+			if(this.endingNode !== undefined) this.drawPoint(this.endingNode, "white", true)
+			this.drawPoint(clickedNode, "blue", true)
+			this.endingNode = clickedNode
+		} else if(operation == "wall") {
+			clickedNode.isWall = true
+			this.grid[clickedNode.x][clickedNode.y].isWall = true
+			this.drawPoint(clickedNode, "black", true)
+		}
+	}
+
 }
 
-var pointsQueue = []
-var canva 
+var field
+var stopMaze = false
+var stopDijkstra = false
+var dijkstraRunning = false
+
 document.addEventListener("DOMContentLoaded", () => {
+	var canvaElement = document.getElementById("drawing")
+	field = new Field(1500, 600, canvaElement, 30)
 
-    var canvaElement = document.getElementById("drawing")
-    canva = new Canva(document.getElementById("drawing"), 1500, 800)
-    canva.drawBoard()
+	document.getElementById("draw").addEventListener("click", (e) => {
+		if(!stopMaze) {
+			e.target.innerText = "Start"
+			stopMaze = true
+			field.clearGrid()
+			field.drawGrid()
+		} else {
+			if(!stopDijkstra && !dijkstraRunning) {
+				e.target.innerText = "Stop and clean"
+				dijkstraRunning = true
+				field.dijkstra()
+			} else {
+				e.target.innerText = "Start"
+				stopDijkstra = true
+				setTimeout(() => {
+					stopDijkstra = false
+					dijkstraRunning = false
+					field.clearGrid()
+					field.drawGrid()
+				}, 10)
+			
+			}
+		}
+	})
 
-    document.getElementById("draw").addEventListener("click", () => {
-        canva.start()
-    })
+	canvaElement.addEventListener("click", (e) => {
+		field.mouseEvent(e)
+	})
 
-    canvaElement.addEventListener("click", (e) => {
-        canva.mouseEvent(e)
-    })
+	canvaElement.addEventListener("mousemove", (e) => {
+		if(e.buttons == 1) {
+			e.preventDefault();
+			field.mouseEvent(e)
+		}
+	})
 
-    canvaElement.addEventListener("mousemove", (e) => {
-        if(e.buttons == 1) {
-            e.preventDefault();
-            canva.mouseEvent(e)
-        }
-    })
-
-    canva.generateMaze()
+	field.generateMaze()
 })
