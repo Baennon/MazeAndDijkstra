@@ -1,0 +1,30 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Maze generator and Dijkstra algorithm</title>
+    <style>
+        #draw {
+            transition: 0.3s ease-in-out;
+        }
+        #draw:hover {
+            background-color: rgb(57, 125, 2) !important;
+        }
+    </style>
+</head>
+<body style="background: linear-gradient(-135deg, #ca4e95, #07b);height: 100vh;margin: 0;width: 100vw;font-family: Arial;">
+    <center>
+        <h1 style="color: white;padding: 0.3rem 0;display: inline-block;">Maze generator and Dijkstra algorithm</h1>
+        <canvas style="border: 1px solid black" id="drawing" width="1500" height="600"></canvas><br>
+        <div style="margin-top: 1rem;display: inline-block;background: white;padding: 1rem;border-radius: 6px;border: #ddd;box-shadow: 1px 1px 8px black;">
+            <button id="draw" style="border: #ddd 1px;padding: 1rem;background: #5b0;color: white;cursor: pointer;">Stop and clean</button>
+            <fieldset style="display: inline;">
+                <legend>Draw tool</legend>
+                <label for="start"><input type="radio" name="control" id="start" checked="" value="start"> Start point</label>
+                <label for="end"><input type="radio" name="control" id="end" value="end"> End point</label>
+                <label for="wall"><input type="radio" name="control" id="wall" value="wall"> Wall</label>
+            </fieldset>
+        </div>
+    </center>
+    <script src="index2.js"></script>
+</body>
+</html>
